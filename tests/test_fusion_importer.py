@@ -21,7 +21,7 @@ class FusionImporterTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("fusion_importer_test", path)
         self.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.module)
-        self.calls, self.closed, self.activated = [], [], []
+        self.calls, self.closed, self.activated, self.deleted = [], [], [], []
         self.document = NS(name="", close=lambda save: self.closed.append(save) or True)
         self.previous = NS(isValid=True, activate=lambda: self.activated.append(True))
         self.app = NS(activeDocument=self.previous,
@@ -33,7 +33,7 @@ class FusionImporterTests(unittest.TestCase):
         self.fail_at = None
 
     def add_mesh(self, filename, unit):
-        body = NS(name="")
+        body = NS(name="", isValid=True, deleteMe=lambda: self.deleted.append(filename) or True)
         self.calls.append((filename, unit, body))
         if self.fail_at == len(self.calls):
             raise RuntimeError("Fusion import failed")
@@ -41,7 +41,7 @@ class FusionImporterTests(unittest.TestCase):
 
     def test_import_separate_named_bodies_explicit_mm(self):
         result = self.module.import_meshes(self.app, Path("/queue"), self.manifest)
-        self.assertEqual(result, {"document": "Two objects", "objects": 2})
+        self.assertEqual(result, {"document": "Two objects", "objects": 2, "target": "NEW"})
         self.assertEqual([x[1] for x in self.calls], ["mm", "mm"])
         self.assertEqual([x[2].name for x in self.calls], ["First", "Second"])
         self.assertEqual(self.closed, [])
@@ -65,3 +65,27 @@ class FusionImporterTests(unittest.TestCase):
         self.document.close = lambda save: False
         with self.assertRaisesRegex(RuntimeError, "częściowy dokument"):
             self.module.import_meshes(self.app, Path("/queue"), self.manifest)
+
+    def test_active_document_append_does_not_create_or_close_document(self):
+        self.previous.name = 'Existing design'
+        self.manifest.update(target='ACTIVE', target_document='abc')
+        result = self.module.import_meshes(self.app, Path('/queue'), self.manifest, 'abc')
+        self.assertEqual(result['target'], 'ACTIVE')
+        self.assertEqual(result['document'], 'Existing design')
+        self.assertEqual(self.document.name, '')
+        self.assertEqual(self.closed, [])
+
+    def test_active_document_change_rejected_before_import(self):
+        self.manifest.update(target='ACTIVE', target_document='before')
+        with self.assertRaisesRegex(RuntimeError, 'zmienił'):
+            self.module.import_meshes(self.app, Path('/queue'), self.manifest, 'after')
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.closed, [])
+
+    def test_active_failure_only_deletes_newly_imported_bodies(self):
+        self.manifest.update(target='ACTIVE', target_document='abc')
+        self.fail_at = 2
+        with self.assertRaises(RuntimeError):
+            self.module.import_meshes(self.app, Path('/queue'), self.manifest, 'abc')
+        self.assertEqual(len(self.deleted), 1)
+        self.assertEqual(self.closed, [])

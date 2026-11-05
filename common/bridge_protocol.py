@@ -9,7 +9,7 @@ import struct
 import time
 import uuid
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 MAX_TRIANGLES = 5_000_000
 MAX_OBJECTS = 500
 MAX_JSON_BYTES = 1_000_000
@@ -76,15 +76,16 @@ def create_job(root):
     return folder
 
 
-def publish_job(folder, name, objects):
+def publish_job(folder, name, objects, target="NEW", target_document=None):
     """ready.json is the commit marker, published only after every STL is closed."""
     manifest = {
         "protocol": PROTOCOL_VERSION, "job_id": folder.name,
         "created_at": time.time(), "name": name[:120],
         "units": "mm", "axes": "XYZ_Z_UP", "objects": objects,
+        "target": target, "target_document": target_document,
     }
     validate_job(folder, manifest)
-    write_status(folder, "queued", "Oczekuje na Fusion.")
+    write_status(folder, "queued", "Oczekuje na odbiornik.")
     atomic_json(folder / "ready.json", manifest)
     return manifest
 
@@ -101,6 +102,10 @@ def validate_job(folder, manifest):
         raise ValueError("Nieobsługiwane jednostki lub osie.")
     if not isinstance(manifest.get("name"), str) or not 1 <= len(manifest["name"]) <= 120:
         raise ValueError("Nieprawidłowa nazwa dokumentu.")
+    if manifest.get("target", "NEW") not in {"NEW", "ACTIVE", "BLENDER"}:
+        raise ValueError("Nieznany cel transferu.")
+    if manifest.get("target") == "ACTIVE" and not isinstance(manifest.get("target_document"), str):
+        raise ValueError("Brak identyfikatora dokumentu docelowego.")
     objects = manifest.get("objects")
     if not isinstance(objects, list) or not 1 <= len(objects) <= MAX_OBJECTS:
         raise ValueError("Eksport musi zawierać od 1 do 500 obiektów.")
@@ -174,7 +179,7 @@ def recover_interrupted(root):
             state = None
         if state not in {"done", "error"}:
             write_status(marker.parent, "uncertain",
-                         "Fusion przerwał import. Sprawdź dokumenty i wyślij ponownie, jeśli potrzeba.")
+                         "Odbiornik przerwał import. Sprawdź dokumenty i wyślij ponownie, jeśli potrzeba.")
         os.replace(marker, marker.with_name("finished.json"))
 
 
@@ -216,3 +221,21 @@ class ReceiverLock:
             msvcrt.locking(self.stream.fileno(), msvcrt.LK_UNLCK, 1)
             self.stream.close()
             self.stream = None
+
+
+def channel_root(channel):
+    if channel not in {"fusion", "blender"}:
+        raise ValueError("Unknown channel")
+    root = bridge_root() / "v2" / channel
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def receiver_document(root):
+    if receiver_status(root) == "offline":
+        raise ValueError("Uruchom odbiornik 0.2.0 w Fusion i otwórz dokument Design.")
+    info = read_json(Path(root) / "receiver.json")
+    token = info.get("document_token")
+    if info.get("protocol") != PROTOCOL_VERSION or not token:
+        raise ValueError("Brak aktywnego dokumentu Fusion lub odbiornik ma starszą wersję.")
+    return token

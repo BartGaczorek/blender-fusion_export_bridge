@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Blender → Fusion Bridge", "author": "BartGaczorek",
-    "version": (0, 1, 0), "blender": (3, 6, 0),
+    "version": (0, 2, 0), "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Fusion", "category": "Import-Export",
     "description": "Wyślij zaznaczone modele do Autodesk Fusion na Windows",
 }
@@ -13,6 +13,7 @@ from bpy.props import EnumProperty, StringProperty
 
 from . import bridge_protocol as protocol
 from .exporter import export_selection
+from . import receiver
 
 _last_folder = None
 _last_message = ""
@@ -33,7 +34,7 @@ class BFBPreferences(bpy.types.AddonPreferences):
 class BFB_OT_send(bpy.types.Operator):
     bl_idname = "export_mesh.send_to_fusion"
     bl_label = "Wyślij do Fusion"
-    bl_description = "Wyślij zaznaczone obiekty po modyfikatorach do nowego dokumentu Fusion"
+    bl_description = "Wyślij zaznaczone obiekty po modyfikatorach do wybranego dokumentu Fusion"
 
     @classmethod
     def poll(cls, context):
@@ -43,8 +44,10 @@ class BFB_OT_send(bpy.types.Operator):
         global _last_folder, _last_message
         context.window_manager.progress_begin(0, 100)
         try:
-            root = protocol.bridge_root()
-            folder, count = export_selection(context, root, context.scene.bfb_units)
+            root = protocol.channel_root("fusion")
+            target = context.scene.bfb_target
+            token = protocol.receiver_document(root) if target == "ACTIVE" else None
+            folder, count = export_selection(context, root, context.scene.bfb_units, target, token)
             _last_folder = folder
             _last_message = "W kolejce: {:,} trójkątów".format(count)
         except Exception as exc:
@@ -54,8 +57,9 @@ class BFB_OT_send(bpy.types.Operator):
         finally:
             context.window_manager.progress_end()
         if protocol.receiver_status(root) == "offline":
-            prefs = context.preferences.addons[__package__].preferences
-            launcher = bpy.path.abspath(prefs.fusion_launcher) if prefs.fusion_launcher else ""
+            entry = context.preferences.addons.get(__package__)
+            prefs = entry.preferences if entry else None
+            launcher = bpy.path.abspath(prefs.fusion_launcher) if prefs and prefs.fusion_launcher else ""
             if launcher:
                 try:
                     path = Path(launcher)
@@ -76,7 +80,7 @@ class BFB_OT_open_queue(bpy.types.Operator):
 
     def execute(self, context):
         try:
-            root = protocol.bridge_root()
+            root = protocol.channel_root("fusion")
             root.mkdir(parents=True, exist_ok=True)
             os.startfile(str(root))
         except Exception as exc:
@@ -98,18 +102,20 @@ class BFB_PT_panel(bpy.types.Panel):
             layout.label(text="Dodatek wymaga Windows.", icon="ERROR")
             return
         try:
-            root = protocol.bridge_root()
+            root = protocol.channel_root("fusion")
             receiver = protocol.receiver_status(root)
             labels = {"ready": "Fusion: gotowy", "busy": "Fusion: zakończ aktywne polecenie",
                       "importing": "Fusion: importuje", "offline": "Fusion: odbiornik wyłączony"}
             layout.label(text=labels.get(receiver, receiver), icon="LINKED" if receiver != "offline" else "UNLINKED")
+            layout.prop(context.scene, "bfb_target", text="Cel")
             layout.prop(context.scene, "bfb_units", text="Jednostki")
             scale = protocol.millimeters_per_unit(context.scene.bfb_units, context.scene.unit_settings.scale_length)
             layout.label(text="1 jednostka Blendera = {:g} mm".format(scale))
             button = layout.row()
             button.scale_y = 1.6
             button.operator(BFB_OT_send.bl_idname, icon="EXPORT")
-            layout.label(text="Nowy dokument • osobne siatki • Z w górę")
+            layout.label(text="Osobne siatki • Z w górę")
+            layout.label(text="Odbiór z Fusion: " + receiver.last_message)
             layout.label(text="Bez materiałów i historii CAD")
             if context.mode != "OBJECT":
                 layout.label(text="Przejdź do Object Mode.", icon="INFO")
@@ -151,6 +157,9 @@ _classes = (BFBPreferences, BFB_OT_send, BFB_OT_open_queue, BFB_PT_panel)
 def register():
     for cls in _classes:
         bpy.utils.register_class(cls)
+    bpy.types.Scene.bfb_target = EnumProperty(name="Cel Fusion", default="NEW", items=[
+        ("NEW", "Nowy dokument", "Utwórz nowy dokument Fusion"),
+        ("ACTIVE", "Aktywny dokument Fusion", "Dodaj siatki do obecnego dokumentu Fusion")])
     bpy.types.Scene.bfb_units = EnumProperty(
         name="Jednostki", default="SCENE", items=[
             ("SCENE", "Ze sceny", "1 BU = Unit Scale × 1000 mm, także przy Unit System=None"),
@@ -160,9 +169,12 @@ def register():
             ("INCH", "1 BU = 1 cal", "Jeden BU to 25,4 mm")])
     bpy.types.TOPBAR_MT_file_export.append(_export_menu)
     bpy.app.timers.register(_redraw, first_interval=1.0, persistent=True)
+    receiver.start()
 
 
 def unregister():
+    receiver.stop()
+    del bpy.types.Scene.bfb_target
     if bpy.app.timers.is_registered(_redraw):
         bpy.app.timers.unregister(_redraw)
     bpy.types.TOPBAR_MT_file_export.remove(_export_menu)

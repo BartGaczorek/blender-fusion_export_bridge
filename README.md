@@ -1,145 +1,155 @@
-# Blender → Fusion Export Bridge
+# Blender ↔ Fusion Bridge
 
-**0.1.0 — Windows, pierwsza wersja do testów w aplikacjach.**
+**0.2.2 — Windows.** Wersja 0.1.0 Blender → nowy dokument Fusion została sprawdzona
+przez użytkownika. Nowe funkcje 0.2.2 mają testy automatyczne; wymagają jeszcze próby
+w rzeczywistych aplikacjach na Windows.
 
-Zaznacz model w Blenderze → **Wyślij do Fusion** → odbiornik tworzy nowy dokument
-Autodesk Fusion i importuje osobne, nazwane siatki. Po jednorazowej instalacji transfer
-wymaga jednego kliknięcia w otwartym panelu. Fusion powinien działać z aktywnym
-odbiornikiem; opcjonalnie Blender może uruchamiać wskazany skrót Fusion.
+## Poprawka Fusion 0.2.2
 
-**Modele trafiają jako siatki (mesh bodies), nie bryły parametryczne BRep/STEP.**
-Nie jest odtwarzana historia modelowania, materiały ani tekstury. Kierunek Fusion →
-Blender nie jest częścią tej wersji.
+Naprawia „3 : invalid id”: identyfikator komendy zawiera teraz wyłącznie dozwolone
+litery, cyfry i podkreślenia. Rejestracja sprząta pozostałości przycisku po błędzie,
+a komunikaty startowe zawierają etap i traceback. Przycisk jest domyślnie przypięty
+w Design → Utilities → Add-Ins. Zamknij Fusion, zastąp cały folder odbiornika i uruchom
+Fusion ponownie, aby usunąć z pamięci starszą kopię commands.py.
+Blender 0.2.1 jest zgodny i nie wymaga ponownej instalacji do tej poprawki.
 
-## Instalacja na Windows
+## Poprawka instalacji Blendera (od 0.2.1)
 
-Paczka: `Blender-Fusion-Bridge-0.1.0-Windows.zip`. W repozytorium zbudujesz ją przez
-`python tools/build.py`; wynik trafia do `dist/`. Workflow GitHub Actions też buduje
-paczkę po uruchomieniu testów.
+Naprawia aktualizację dodatku w uruchomionym Blenderze: stare podmoduły Python
+(w tym bridge_protocol z wersji 0.1.0) są przeładowywane w kolejności zależności.
+Nieudana rejestracja usuwa timery, blokadę odbiornika, menu i zarejestrowane klasy.
+Jeśli poprzednia instalacja już zakończyła się błędem, przed instalacją tej wersji
+zapisz projekty i zamknij wszystkie procesy Blendera. Zainstaluj wewnętrzny ZIP 0.2.2.
+Protokół nadal ma numer 2; odbiornik Fusion 0.2.0 jest zgodny. Aktualizacja całego
+folderu Fusion jest zalecana, aby także uruchamianie zamkniętego Blendera używało poprawki.
 
-1. Rozpakuj **całą paczkę Windows**.
-2. Uruchom **Install-Fusion.cmd**. Instaluje odbiornik w stałym folderze bieżącego
-   użytkownika i otwiera ten folder. Nie wymaga administratora, niczego nie pobiera
-   i nie zmienia globalnej polityki PowerShell.
-3. W Fusion: **Utilities → Add-Ins → Scripts and Add-Ins → Add-Ins → +**. Wskaż
-   folder `BlenderFusionBridge` otwarty przez instalator (lub `BlenderFusionBridge.py`,
-   jeśli okno wymaga pliku). Wybierz **Run**, włącz **Run on Startup**. Nazwy sekcji
-   mogą różnić się zależnie od wersji i języka Fusion.
-4. W Blenderze: **Edit → Preferences → Add-ons → Install from Disk…** (w starszych
-   wersjach **Install…**). Wybierz wewnętrzny plik **blender_fusion_bridge-0.1.0.zip**,
-   pozostawiając go spakowanym. Włącz **Blender → Fusion Bridge**. Nie instaluj całej
-   paczki Windows jako dodatku Blendera.
+## Co robi
 
-Folder odbiornika: `%LOCALAPPDATA%\BlenderFusionBridge\AddIns\BlenderFusionBridge`.
-Bez instalatora można skopiować folder `BlenderFusionBridge` w stałe miejsce i wskazać
-je w Fusion. Przeniesienie go później wymaga ponownej rejestracji.
+- **Blender → Fusion:** zaznaczone obiekty po modyfikatorach, do nowego albo aktywnego
+  dokumentu Fusion. Wybór celu w panelu **N → Fusion**. Jeden przycisk wysyłania.
+- **Fusion → Blender:** zaznaczone ciała siatkowe zachowują istniejącą geometrię
+  trójkątów (bez remeshu/redukcji). Bryły BRep i otwarte ciała powierzchniowe są
+  triangulowane standardowym presetem **Normal** API Fusion, bez okna ustawień jakości.
+  Modele trafiają jako osobne obiekty do nowej kolekcji w otwartej scenie Blendera.
+- Jeśli Blender jest zamknięty, Fusion uruchamia go w nowym oknie i przekazuje modele.
+  Istniejąca zawartość sceny/startup file nie jest kasowana (także domyślna kostka).
+- Oba kierunki używają STL w mm, zachowują osie XYZ (Z w górę), położenie i skalę.
+  Nie przenoszą materiałów, tekstur, hierarchii, pivotów ani historii CAD.
 
-## Codzienna praca
+## Aktualizacja z 0.1.0 — instalacja ręczna
 
-1. Zaznacz obiekt lub kilka obiektów w **Object Mode**.
-2. W widoku 3D otwórz panel klawiszem **N**, kartę **Fusion** i kliknij **Wyślij do Fusion**.
+1. W Fusion zatrzymaj **BlenderFusionBridge** w **Scripts and Add-Ins**.
+2. Zamknij Blender. Rozpakuj cały zestaw **Blender-Fusion-Bridge-0.2.2-Windows.zip**.
+3. Skopiuj **cały folder `BlenderFusionBridge`** z nowej paczki do swojego miejsca
+   instalacji, np. `C:\TOOLS\BlenderFusionBridge`, zastępując poprzednią wersję.
+   Zachowaj podfolder `blender_fusion_bridge`: służy do startu zamkniętego Blendera.
+4. W Fusion uruchom ponownie dodatek z tej samej lokalizacji. Jeśli zmieniasz lokalizację:
+   **Utilities → Add-Ins → Scripts and Add-Ins → Add-Ins → +**; wskaż folder albo
+   `BlenderFusionBridge.py`, zależnie od okna. Włącz **Run on Startup**.
+5. W Blenderze wyłącz stary dodatek i zainstaluj wewnętrzny ZIP
+   **blender_fusion_bridge-0.2.2.zip** przez **Preferences → Add-ons → Install from Disk**.
+   Włącz dodatek. Przy problemie z odświeżeniem modułów uruchom Blender ponownie.
+6. Zainstaluj **obie** strony 0.2.2. Wersja 0.1.0 nie odbiera protokołu 0.2.2.
 
-Alternatywy: **F3 → Wyślij do Fusion**, **File → Export → Wyślij do Fusion** lub
-Quick Favorites po dodaniu przycisku prawym przyciskiem myszy.
-Panel pokazuje **W kolejce → Importowanie → Zaimportowano** lub opis błędu.
-Dokument Fusion pozostaje niezapisany — zapisujesz go w wybranym projekcie samodzielnie.
-Każdy następny eksport tworzy nowy dokument, nie aktualizuje poprzedniego.
+Nowa instalacja: te same kroki, pomijając zatrzymywanie starej wersji. Użytkownicy
+bez blokad PowerShell mogą opcjonalnie użyć Install-Fusion.cmd zamiast kopiowania.
+Nie trzeba zmieniać polityki PowerShell. Jeśli skrypt nie jest podpisany i Windows
+go odrzuca, wybierz powyższą instalację ręczną.
 
-Podczas aktywnego polecenia w Fusion odbiornik czeka na jego zakończenie. Po instalacji
-zamknij okno Scripts and Add-Ins. Gdy odbiornik jest wyłączony, model czeka w lokalnej
-kolejce do uruchomienia dodatku. Kolejka jest zachowana także po restarcie programów.
+## Blender → Fusion
 
-**Opcjonalny autostart Fusion:** w preferencjach dodatku Blendera wskaż istniejący
-skrót `.lnk` lub plik `.exe` Fusion. Skrót jest wygodniejszy, ponieważ aktualizacje
-Fusion mogą zmieniać lokalizację programu. Nadal wymagane są odbiornik i Run on Startup.
-Logowanie lub aktualizacja Fusion mogą wymagać interakcji użytkownika.
+W Object Mode zaznacz modele, otwórz **N → Fusion**, ustaw **Cel**:
 
-## Wymiary i orientacja
+- **Nowy dokument:** każdy transfer tworzy osobny, niezapisany dokument Fusion.
+- **Aktywny dokument Fusion:** dodaje siatki do root component aktualnego dokumentu.
+  Dokument Fusion musi być otwarty, a odbiornik 0.2.2 uruchomiony. Po przełączeniu
+  dokumentu poczekaj ok. 2 sekundy na odświeżenie statusu i dopiero wysyłaj.
 
-Domyślnie **1 jednostka Blendera = Unit Scale × 1000 mm**. Dotyczy to również
-`Unit System = None`: domyślna jednostka oznacza wtedy 1 m. Sama zmiana `Length`
-na milimetry zmienia sposób wyświetlania, nie skalę geometrii. Panel pokazuje przelicznik.
+Kliknij **Wyślij do Fusion**. Przy aktywnym poleceniu Fusion poczeka na jego zakończenie.
+Jeżeli w czasie oczekiwania przełączysz dokument, import zostanie odrzucony zamiast
+trafić do niewłaściwego projektu. Wybierz właściwy dokument i wyślij jeszcze raz.
+Przy błędzie importu do otwartego dokumentu usuwane są tylko nowo dodane siatki;
+istniejący dokument nie jest zamykany. Nie ma zastępowania poprzednich obiektów.
 
-| Przypadek | Ustawienie dodatku | Wynik |
-|---|---|---|
-| Rzeczywisty wymiar w Blenderze 20 mm | Ze sceny | 20 mm w Fusion |
-| Wpisujesz 20 jednostek, traktując je jako 20 mm | 1 BU = 1 mm | 20 mm w Fusion |
-| Kostka 2 BU, Unit Scale = 1 | Ze sceny | 2000 mm w Fusion |
-| Kostka 2 BU, Unit Scale = 0.001 | Ze sceny | 2 mm w Fusion |
+Skróty: **F3 → Wyślij do Fusion**, **File → Export → Wyślij do Fusion**, Quick Favorites.
+Obsługiwane typy Blender: Mesh, Curve, Surface, Text. Geometry Nodes z instancjami
+wymaga **Realize Instances**. Eksport używa modyfikatorów viewport w bieżącej klatce,
+bez ich Apply ani zmiany oryginalnych obiektów.
 
-Zachowywane są **osie XYZ, Z w górę**, położenie w świecie, rotacja, skala,
-transformacje rodziców i odbicia. Transformacje są zapisane we współrzędnych siatki;
-hierarchia, pivoty i constraints nie są przenoszone. Nie ma zamiany Y/Z. Ustawienie
-widoku „Up” w Fusion może wpływać na odbiór orientacji na ekranie, ale nie współrzędne.
+## Fusion → Blender
 
-Eksport obejmuje wynik modyfikatorów widoczny w viewport w bieżącej klatce, bez Apply
-ani zmiany `.blend`. Obsługiwane typy: **Mesh, Curve, Surface, Text**.
-Geometry Nodes: użyj **Realize Instances**, jeśli wynik zawiera instancje.
-Instancje kolekcji, metakule, rig i animacja nie są przenoszone w tej wersji.
-Samodzielne wierzchołki i krawędzie nie tworzą powierzchni STL.
+1. Zaznacz całe ciała Mesh, bryły BRep lub ciała powierzchniowe w drzewie Fusion.
+2. W Design / Utilities / Add-Ins kliknij **Wyślij do Blendera** i potwierdź **OK**.
+   Pole wyboru ciał przejmuje zgodne zaznaczenie; można je też uzupełnić w tym oknie.
+   Nie ma ustawień triangulacji. Same ściany, krawędzie i komponenty nie są eksportowane.
 
-Limit jednego transferu: **500 obiektów / 5 mln trójkątów**. To limit transportu,
-nie gwarancja płynności Fusion. Duże modele mogą długo się przetwarzać; eksport w
-Blenderze i import w Fusion wykonują się synchronicznie w wątkach UI.
+Otwarty Blender z włączonym dodatkiem odbiera automatycznie, bez okna wyboru pliku.
+W Edit Mode lub podczas renderowania import poczeka. W scenie powstaje kolekcja
+**Fusion - nazwa dokumentu**; wcześniejsze obiekty i zaznaczenie pozostają bez zmian.
 
-## Aktualizacja i usunięcie
+Przy pierwszym uruchomieniu dodatku Blender zapisuje ścieżkę swojego programu.
+Jeżeli Fusion nie zna tej ścieżki, jednorazowo poprosi o wskazanie **blender.exe**.
+Zamknięty Blender jest uruchamiany z odbiornikiem z paczki, również bez wcześniejszego
+zapisania dodatku w preferencjach. Nie zmienia to startup file ani preferencji.
+Jeśli Blender już działa, ale dodatek jest wyłączony, transfer pozostaje w kolejce:
+włącz dodatek 0.2.2 w tym oknie. Most nie otwiera wtedy drugiego procesu.
 
-Przed aktualizacją zatrzymaj odbiornik w Fusion, wyłącz dodatek Blendera i zamknij
-oba programy. Zainstaluj nową paczkę w tych samych miejscach. Instalator odrzuca
-nadpisanie uruchomionego odbiornika. Nie uruchamiaj kilku wersji odbiornika.
+Przy wielu procesach Blendera odbiera **pierwszy uruchomiony odbiornik 0.2.2**.
+Wyłącz dodatek w nim i włącz go w docelowym procesie, jeśli chcesz zmienić odbiorcę.
+Wielookienkowy Blender korzysta ze sceny bieżącego kontekstu aplikacji.
 
-Usuwanie: wyłącz i usuń dodatek Blendera; zatrzymaj i usuń wpis odbiornika w Fusion,
-a następnie jego folder instalacyjny. Dane transferów są osobno w podfolderze `jobs`.
+Status odbioru jest widoczny w panelu Fusion w Blenderze. Fusion zapisuje wynik
+wysyłania w **Text Commands**, a błędy odbioru pokazuje komunikatem.
 
-## Transfery i diagnostyka
+## Jednostki
 
-Most działa na jednym komputerze i tym samym koncie Windows, bez portów TCP, serwera
-ani dodatkowych bibliotek. Sam nie wysyła plików do internetu; zapis i synchronizacja
-projektu przez Fusion odbywają się zgodnie z ustawieniami Fusion.
+Opcja **Ze sceny** oznacza **1 BU = Unit Scale × 1000 mm**, również dla Unit System=None.
+Sama zmiana Length na milimetry zmienia wyświetlanie, nie skalę współrzędnych.
+Przelicznik w panelu dotyczy **obu kierunków**, co umożliwia round-trip przy umownych mm.
 
-`%LOCALAPPDATA%\BlenderFusionBridge` zawiera:
-
-- `jobs/<id>/`: STL, manifest i status transferu;
-- `receiver.json`: aktualny status odbiornika;
-- `receiver.log`: rotowany dziennik problemów odbiornika;
-- `AddIns/`: zainstalowany kod odbiornika.
-
-Kliknij **Otwórz folder transferów**, aby znaleźć diagnostykę. Transfery pozostają
-na dysku do ręcznego usunięcia. Usuwaj zakończone transfery przy zatrzymanym odbiorniku;
-usunięcie całego `jobs` kasuje też oczekujące eksporty. Nie wpływa na modele już
-otwarte/zapisane w Fusion. Nie usuwaj `receiver.lock`, gdy Fusion działa.
-
-| Objaw | Działanie |
+| Ustawienie | Znaczenie |
 |---|---|
-| „Odbiornik wyłączony” | Uruchom BlenderFusionBridge w Fusion i włącz Run on Startup. |
-| „Zakończ aktywne polecenie” | Zakończ/anuluj polecenie w Fusion; odbiornik go nie anuluje. |
-| „Import przerwany” | Sprawdź dokumenty Fusion; w razie potrzeby wyślij model ponownie. |
-| Model 1000 razy za duży | Sprawdź Unit Scale oraz „Ze sceny” / „1 BU = 1 mm”. |
-| Błąd importu | Przeczytaj opis w panelu i status.json. Spróbuj prostszej siatki. |
-| Niepełny wynik Geometry Nodes | Zrealizuj instancje. |
-| Brak dodatku Blendera | Instaluj wewnętrzny ZIP dodatku, nie cały zestaw. |
+| Ze sceny, Unit Scale = 1 | 1 BU = 1000 mm |
+| Ze sceny, Unit Scale = 0.001 | 1 BU = 1 mm |
+| 1 BU = 1 mm | Niezależnie od jednostek sceny |
+| 1 BU = 1 cm / 1 m / 1 cal | 10 / 1000 / 25.4 mm |
 
-Nieudany import zamyka wyłącznie nowo utworzony dokument, bez zapisywania. Jeśli
-Fusion odmówi jego zamknięcia, komunikat wskazuje możliwość pozostawienia częściowego
-dokumentu. Po awarii procesu nie ma automatycznego ponowienia importu, aby uniknąć duplikatów.
+Fusion używa wewnętrznie cm; współrzędne odczytane z jego siatek są przeliczane na mm.
+Transformacje wystąpień komponentów są nakładane raz, przed zapisem STL. Mesh nie
+jest upraszczany; quady/polygony są reprezentowane trójkątami wymaganymi przez STL.
+Limit: 500 obiektów / 5 mln trójkątów na transfer. Duże modele mogą blokować UI podczas
+przeliczania/odczytu; brak gwarancji płynnego importu tak dużych siatek w Fusion.
 
-## Kod i testy
+## Pliki i diagnostyka
 
-Kod celuje w **Blender 3.6+ i bieżący Autodesk Fusion na Windows 10/11**.
-Zgodność z konkretną instalacją wymaga próby w obu aplikacjach.
+Lokalne kolejki: `%LOCALAPPDATA%\BlenderFusionBridge\v2\fusion` i `...\v2\blender`.
+W każdym kanale `jobs/<id>` zawiera STL, manifest i status. Zamknięcie programu nie
+kasuje kolejki. Po awarii rozpoczęty import jest oznaczany jako przerwany i nie jest
+automatycznie powtarzany. Sprawdź scenę przed ponownym wysłaniem.
+
+Transfery pozostają na dysku. Usuwaj zakończone zadania przy zatrzymanych odbiornikach.
+Nie usuwaj receiver.lock podczas pracy programów. Stara kolejka 0.1.0 (`jobs` bez `v2`)
+nie jest odtwarzana w nowym odbiorniku. Nie usuwaj folderu AddIns z zainstalowanym kodem.
+Most nie uruchamia serwera ani nie wysyła modeli przez internet; zapis/synchronizacja
+projektów Fusion odbywa się zgodnie z ustawieniami samej aplikacji.
+
+## Budowanie i testowanie
 
 ```powershell
 python -m unittest discover -s tests -v
-python -m compileall -q blender fusion common tools
 python tools/build.py
+```
+
+Paczka powstaje w `dist/`. Workflow GitHub Actions testuje Linux/Windows i buduje ZIP.
+Źródła są w `blender/`, `fusion/`, `common/`; wspólne moduły i odbiornik startowy kopiuje
+skrypt budujący. Nie instaluj niekompletnych folderów źródłowych.
+
+Test rzeczywistego Blendera (własna ścieżka do programu):
+
+```powershell
 & 'C:\Program Files\Blender Foundation\Blender 4.5\blender.exe' --background --factory-startup --python tools/blender_smoke.py
 ```
 
-Ścieżka Blendera jest przykładem; wskaż własną instalację. Test headless tworzy
-scenę w osobnym procesie, nie otwiera ani nie zapisuje Twoich projektów.
-Testy API jednostkowych używają atrap, więc nie zastępują testu w aplikacjach.
-Lista prób: [docs/TESTING.md](docs/TESTING.md).
-
-Źródła: `blender/`, `fusion/`, `common/`. Skrypt budowania kopiuje wspólne moduły
-do obu paczek. Instaluj zbudowane paczki, nie niekompletne foldery źródłowe.
-Opis protokołu: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Test tworzy osobną scenę testową w procesie background. Nie otwiera projektów użytkownika.
+Zgodność docelowa: Blender 3.6+ i bieżący Fusion na Windows 10/11.
+[Próby stanowiskowe](docs/TESTING.md) · [Walidacja](docs/VALIDATION.md) · [Architektura](docs/ARCHITECTURE.md).

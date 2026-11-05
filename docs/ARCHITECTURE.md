@@ -1,42 +1,43 @@
-# Architektura v1
+# Protokół 2 — dwa kierunki
 
-Blender i Fusion używają osobnych interpreterów. Transfer używa binarnego STL na
-obiekt i manifestu JSON. Nie wymaga globalnego Pythona, serwera ani portu TCP.
+Oddzielne kanały v2/fusion oraz v2/blender izolują kolejki, statusy i blokady.
+Odbiornik 0.1.0 nie może przypadkowo odebrać transferu do aktywnego dokumentu jako
+nowego dokumentu. Manifest w obu kanałach zawiera jednostki mm, XYZ_Z_UP, SHA-256,
+liczbę trójkątów, nazwę obiektu i bezpieczną względną nazwę pliku STL.
 
-1. Blender odczytuje `evaluated_get(...).to_mesh()` z modyfikatorami viewport.
-2. Eksporter trianguluje kopię, zapisuje world-space w mm, odwraca winding przy
-   ujemnym wyznaczniku macierzy. Nie zmienia modelu źródłowego.
-3. Pliki mają nazwy ASCII `mesh_NNNN.stl`; oryginalne nazwy są w UTF-8 JSON.
-4. Po zamknięciu STL atomowo publikowany jest `ready.json`.
-5. Jeden odbiornik (`msvcrt.locking`) obserwuje kolejkę. Wątek IO używa tylko
-   dozwolonego `Application.fireCustomEvent`; pozostałe API Fusion działa na wątku UI.
-6. CustomEvent czeka na `SelectCommand`/brak polecenia, przejmuje znacznik jako
-   `processing.json`, sprawdza manifest, ścieżki, rozmiary, liczbę trójkątów i SHA-256.
-7. Nowy dokument Design otrzymuje siatki przez `meshBodies.add(path, MillimeterMeshUnit)`.
-   Bez wyłączania historii poprzednich dokumentów, konwersji BRep i API preview.
-8. Wynik `done`/`error` jest zapisany przed zmianą znacznika na `finished.json`.
+Ready -> processing -> finished. Publikacja następuje po zamknięciu wszystkich STL.
+Awaria po przejęciu transferu nie powoduje replay. Nie gwarantujemy exactly-once
+pomiędzy API aplikacji a systemem plików; status uncertain wymaga sprawdzenia ręcznego.
 
-Dokument jest zawsze nowy, więc zmiana aktywnego projektu w trakcie oczekiwania nie
-kieruje importu do przypadkowego projektu. Błąd zamyka tylko ten nowy dokument.
-Brak możliwości zamknięcia częściowego dokumentu jest jawnie zgłaszany.
+Fusion publikuje efemeryczny token aktywnego dokumentu. Blender dołącza token do
+transferu ACTIVE. Odbiornik sprawdza aktualny dokument na wątku UI, zanim zacznie import.
+Przełączenie dokumentu unieważnia token. Import ACTIVE nigdy nie zamyka dokumentu;
+rollback obejmuje wyłącznie nowe ciała zwrócone przez meshBodies.add. W wariancie NEW
+rollback zamyka tylko utworzony dokument. Import do root component, bez zmiany aktywacji.
 
-Każdy eksport ma UUID. Niekompletne eksporty są niewidoczne dla odbiornika. Rozpoczęty
-import po awarii staje się `uncertain` i nie jest ponawiany. Nie deklarujemy „exactly
-once” pomiędzy Fusion a systemem plików: awaria po imporcie, przed zapisaniem statusu,
-wymaga ręcznego sprawdzenia. Pliki transferów nie są automatycznie kasowane.
+Fusion MeshBody.displayMesh dostarcza istniejące trójkąty. BRepBody.meshManager używa
+TriangleMeshCalculator z presetem NormalQualityTriangleMesh; obejmuje również otwarte
+ciała powierzchniowe. Odczyt z nativeObject plus transform2 assemblyContext zapewnia
+wspólne współrzędne świata bez podwójnego nakładania transformacji. STL zapisuje mm.
 
-Metadane nie mogą zawierać dowolnych ścieżek ani kodu. Kolejka jest prywatna dla konta
-Windows, ale nie stanowi granicy bezpieczeństwa przed innymi procesami tego samego
-użytkownika. Nie należy umieszczać jej na dysku sieciowym.
+Fusion uruchamia API modelowania na CustomEvent na głównym wątku; wątek IO tylko
+publikuje heartbeat i wywołuje fireCustomEvent. Przycisk wysyłania ma tylko pole wyboru
+ciał i potwierdzenie, bez parametrów triangulacji. Handler destroy zwalnia referencje.
 
-## Sprawdzone źródła API
+Blender używa persistent app timer na głównym wątku i API danych zamiast operatora
+importu STL. Import jest w bieżącej scenie do nowej kolekcji, z rollback obiektów,
+meshy i kolekcji. Tryb edycji i render odraczają import. Dwa programy nie współdzielą
+interpreterów ani modułów. Dane nie trafiają do sieci.
 
-- [MeshBodies.add](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_MeshBodies_add.htm)
-- [MeshUnits](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_MeshUnits.htm)
-- [CustomEvent](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/CustomEventSample_Sample.htm)
-- [Documents.add](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/core_Documents_add.htm)
-- [Manifest](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/WritingDebugging_UM.htm)
-- [Blender evaluated geometry](https://docs.blender.org/api/current/bpy.types.Depsgraph.html)
+Blender przechowuje ścieżkę programu; Fusion używa osobnych argumentów subprocess
+(shell=False). Przed startem sprawdza blokadę odbiornika, proces blender.exe i krótki
+znacznik uruchamiania. Zajęty odbiornik trzyma blokadę nawet przy nieaktualnym heartbeat.
+Bootstrap zawiera ten sam dodatek co ZIP, bez nadpisywania preferencji i startup file.
 
-Documents.add nie może być wykonane wewnątrz transakcji Command.execute, dlatego
-import wykonuje CustomEvent z kontrolą activeCommand, a nie toolbar command.
+Źródła API:
+- https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_MeshBody.htm
+- https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_TriangleMeshCalculator.htm
+- https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_TriangleMesh_nodeCoordinates.htm
+- https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/fusion_MeshBodies_add.htm
+- https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/CustomEventSample_Sample.htm
+- https://docs.blender.org/api/current/bpy.app.timers.html

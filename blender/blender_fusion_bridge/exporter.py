@@ -7,7 +7,7 @@ from .stl_writer import write_binary_stl
 SUPPORTED_TYPES = {"MESH", "CURVE", "SURFACE", "FONT"}
 
 
-def export_selection(context, root, mode="SCENE"):
+def export_selection(context, root, mode="SCENE", target="NEW", target_document=None):
     if context.mode != "OBJECT":
         raise ValueError("Przejdź do Object Mode przed wysłaniem modelu.")
     objects = list(context.selected_objects)
@@ -51,7 +51,7 @@ def export_selection(context, root, mode="SCENE"):
             finally:
                 evaluated.to_mesh_clear()
         name = objects[0].name if len(objects) == 1 else "Blender - {} obiektów".format(len(objects))
-        protocol.publish_job(folder, name, records)
+        protocol.publish_job(folder, name, records, target, target_document)
         return folder, total
     except Exception:
         # No commit marker exists on failures; Fusion cannot see partial exports.

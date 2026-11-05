@@ -6,6 +6,7 @@ from pathlib import Path
 import struct
 import sys
 import tempfile
+import json
 
 import bpy
 from mathutils import Euler, Matrix, Vector
@@ -58,6 +59,27 @@ try:
         folder, _ = export_selection(bpy.context, Path(temporary))
         lo, hi = bounds(folder / "mesh_0000.stl")
         assert all(abs(a-b) < 0.0001 for a, b in zip(lo + hi, (0, 15, 15, 20, 25, 45)))
+        # Reverse receiver in a real Blender process: append, preserve existing objects,
+        # scale and rollback a failed second object.
+        from blender_fusion_bridge.receiver import import_meshes
+        manifest = protocol.read_json(folder / 'ready.json')
+        manifest['target'] = 'BLENDER'
+        before = set(bpy.data.objects)
+        result = import_meshes(folder, manifest)
+        assert result['objects'] == 1
+        assert before.issubset(set(bpy.data.objects))
+        imported = (set(bpy.data.objects) - before).pop()
+        bpy.context.view_layer.update()
+        assert all(abs(a-b) < 0.0001 for a,b in zip(imported.dimensions, (20, 10, 30)))
+        before = set(bpy.data.objects)
+        broken = dict(manifest)
+        broken['objects'] = manifest['objects'] + [{'name':'Broken','file':'missing.stl'}]
+        try:
+            import_meshes(folder, broken)
+            raise AssertionError('Invalid transfer should fail')
+        except FileNotFoundError:
+            pass
+        assert set(bpy.data.objects) == before
     print("BLENDER BRIDGE SMOKE TEST PASSED", bpy.app.version_string)
 finally:
     addon.unregister()

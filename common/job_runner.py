@@ -8,12 +8,12 @@ def process_job(folder, importer):
         return False
     try:
         manifest = protocol.validate_job(folder, protocol.read_json(folder / "processing.json"))
-        protocol.write_status(folder, "processing", "Fusion importuje modele…")
+        protocol.write_status(folder, "processing", "Importowanie modeli…")
         result = importer(folder, manifest)
     except Exception as exc:
         protocol.write_status(folder, "error", str(exc))
     else:
-        protocol.write_status(folder, "done", "Zaimportowano do nowego dokumentu Fusion.", result=result)
+        protocol.write_status(folder, "done", "Import zakończony.", result=result)
     # If writing the outcome fails, retain processing.json for recovery on restart.
     os.replace(folder / "processing.json", folder / "finished.json")
     return True

@@ -24,10 +24,13 @@ def build():
     if blender.exists():
         shutil.rmtree(blender)
     shutil.copytree(ROOT / "blender" / "blender_fusion_bridge", blender, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copy2(ROOT / "common" / "bridge_protocol.py", blender)
-    zip_tree(blender, staging / "blender_fusion_bridge-0.1.0.zip", "blender_fusion_bridge")
+    for name in ("bridge_protocol.py", "job_runner.py", "stl_reader.py"):
+        shutil.copy2(ROOT / "common" / name, blender)
+    zip_tree(blender, staging / "blender_fusion_bridge-0.2.2.zip", "blender_fusion_bridge")
     fusion = staging / "BlenderFusionBridge"
     shutil.copytree(ROOT / "fusion" / "BlenderFusionBridge", fusion, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(blender, fusion / "blender_fusion_bridge", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy2(ROOT / "blender/blender_fusion_bridge/stl_writer.py", fusion)
     for name in ("bridge_protocol.py", "job_runner.py"):
         shutil.copy2(ROOT / "common" / name, fusion)
     for name in ("README.md", "install/Install-Fusion.cmd", "install/install-fusion.ps1"):
@@ -40,8 +43,8 @@ def build():
         shutil.copytree(ROOT / name, source / name, ignore=shutil.ignore_patterns("__pycache__"))
     for name in ("README.md", ".gitignore"):
         shutil.copy2(ROOT / name, source / name)
-    kit = dist / "Blender-Fusion-Bridge-0.1.0-Windows.zip"
-    zip_tree(staging, kit, "Blender-Fusion-Bridge-0.1.0-Windows")
+    kit = dist / "Blender-Fusion-Bridge-0.2.2-Windows.zip"
+    zip_tree(staging, kit, "Blender-Fusion-Bridge-0.2.2-Windows")
     print(kit)
     return kit
 

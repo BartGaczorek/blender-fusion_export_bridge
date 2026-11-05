@@ -4,7 +4,7 @@
   "id": "6ccbb54c-a334-48ed-8a61-b38877eb593c",
   "author": "BartGaczorek",
   "description": {"": "Import selected Blender meshes into a new Fusion document on Windows."},
-  "version": "0.1.0",
+  "version": "0.2.2",
   "runOnStartup": true,
   "supportedOS": "windows"
 }

@@ -15,12 +15,13 @@ class ReceiverTests(unittest.TestCase):
         base = Path(__file__).resolve().parents[1] / "fusion/BlenderFusionBridge"
         adsk = ModuleType("adsk")
         adsk.core = ModuleType("adsk.core")
+        adsk.fusion = ModuleType("adsk.fusion")
         adsk.core.CustomEventHandler = type("CustomEventHandler", (), {})
         package = ModuleType("fusion_receiver_test")
         package.__path__ = [str(base)]
         importer = ModuleType("fusion_receiver_test.importer")
         importer.import_meshes = Mock()
-        modules = {"adsk": adsk, "adsk.core": adsk.core, "fusion_receiver_test": package,
+        modules = {"adsk": adsk, "adsk.core": adsk.core, "adsk.fusion": adsk.fusion, "fusion_receiver_test": package,
                    "fusion_receiver_test.bridge_protocol": bridge_protocol,
                    "fusion_receiver_test.job_runner": job_runner, "fusion_receiver_test.importer": importer}
         self.patch = patch.dict(sys.modules, modules)
@@ -31,7 +32,7 @@ class ReceiverTests(unittest.TestCase):
         spec.loader.exec_module(self.module)
         self.runtime = NS(stop_event=threading.Event(), pending=threading.Event(),
                           app=NS(userInterface=NS(activeCommand="SelectCommand")), root=Path("/queue"),
-                          state="ready", logger=Mock())
+                          state="ready", logger=Mock(), refresh_document=Mock(), report_outgoing=Mock(), document_token="abc")
         self.runtime.pending.set()
 
     def test_busy_command_defers_import_and_allows_next_event(self):

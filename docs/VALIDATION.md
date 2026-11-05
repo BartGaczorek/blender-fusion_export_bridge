@@ -1,6 +1,6 @@
-# Walidacja 0.2.0 — 2026-11-05
+# Walidacja 0.2.1 — 2026-11-05
 
-- 39 testów: 38 zaliczonych na Linux/Python 3.12, 1 pominięty (blokada Windows).
+- 41 testów: 40 zaliczonych na Linux/Python 3.12, 1 pominięty (blokada Windows).
 - Nowe testy: aktywny dokument i zmiana celu; rollback tylko nowych ciał; istniejąca
   scena Blender; rollback częściowego importu Blender; mesh bez przeliczania;
   BRep/powierzchnie z normalną jakością; transformacja wystąpienia, jednostki i
@@ -14,3 +14,6 @@
   wymaga uruchomienia w zainstalowanym Blenderze.
 
 Lista prób przed wdrożeniem: [TESTING.md](TESTING.md).
+
+Poprawka 0.2.1: test odtworzenia starego modułu bez channel_root, przeładowania
+zależności oraz powtarzalnego sprzątania po częściowej rejestracji.

@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Blender → Fusion Bridge", "author": "BartGaczorek",
-    "version": (0, 2, 0), "blender": (3, 6, 0),
+    "version": (0, 2, 1), "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Fusion", "category": "Import-Export",
     "description": "Wyślij zaznaczone modele do Autodesk Fusion na Windows",
 }
@@ -11,9 +11,15 @@ from pathlib import Path
 import bpy
 from bpy.props import EnumProperty, StringProperty
 
-from . import bridge_protocol as protocol
-from .exporter import export_selection
-from . import receiver
+import importlib
+from . import module_loader
+importlib.reload(module_loader)
+# Release old timers/locks and classes before overwriting module globals.
+module_loader.cleanup(globals(), bpy)
+_modules = module_loader.reload_dependencies(__package__)
+protocol = _modules['bridge_protocol']
+export_selection = _modules['exporter'].export_selection
+receiver = _modules['receiver']
 
 _last_folder = None
 _last_message = ""
@@ -155,29 +161,26 @@ _classes = (BFBPreferences, BFB_OT_send, BFB_OT_open_queue, BFB_PT_panel)
 
 
 def register():
-    for cls in _classes:
-        bpy.utils.register_class(cls)
-    bpy.types.Scene.bfb_target = EnumProperty(name="Cel Fusion", default="NEW", items=[
-        ("NEW", "Nowy dokument", "Utwórz nowy dokument Fusion"),
-        ("ACTIVE", "Aktywny dokument Fusion", "Dodaj siatki do obecnego dokumentu Fusion")])
-    bpy.types.Scene.bfb_units = EnumProperty(
-        name="Jednostki", default="SCENE", items=[
-            ("SCENE", "Ze sceny", "1 BU = Unit Scale × 1000 mm, także przy Unit System=None"),
-            ("MM", "1 BU = 1 mm", "Dla modeli tworzonych w umownych milimetrach"),
-            ("CM", "1 BU = 1 cm", "Jeden BU to 10 mm"),
-            ("M", "1 BU = 1 m", "Jeden BU to 1000 mm"),
-            ("INCH", "1 BU = 1 cal", "Jeden BU to 25,4 mm")])
-    bpy.types.TOPBAR_MT_file_export.append(_export_menu)
-    bpy.app.timers.register(_redraw, first_interval=1.0, persistent=True)
-    receiver.start()
+    try:
+        for cls in _classes:
+            bpy.utils.register_class(cls)
+        bpy.types.Scene.bfb_target = EnumProperty(name="Cel Fusion", default="NEW", items=[
+            ("NEW", "Nowy dokument", "Utwórz nowy dokument Fusion"),
+            ("ACTIVE", "Aktywny dokument Fusion", "Dodaj siatki do obecnego dokumentu Fusion")])
+        bpy.types.Scene.bfb_units = EnumProperty(
+            name="Jednostki", default="SCENE", items=[
+                ("SCENE", "Ze sceny", "1 BU = Unit Scale × 1000 mm, także przy Unit System=None"),
+                ("MM", "1 BU = 1 mm", "Dla modeli tworzonych w umownych milimetrach"),
+                ("CM", "1 BU = 1 cm", "Jeden BU to 10 mm"),
+                ("M", "1 BU = 1 m", "Jeden BU to 1000 mm"),
+                ("INCH", "1 BU = 1 cal", "Jeden BU to 25,4 mm")])
+        bpy.types.TOPBAR_MT_file_export.append(_export_menu)
+        bpy.app.timers.register(_redraw, first_interval=1.0, persistent=True)
+        receiver.start()
+    except Exception:
+        module_loader.cleanup(globals(), bpy)
+        raise
 
 
 def unregister():
-    receiver.stop()
-    del bpy.types.Scene.bfb_target
-    if bpy.app.timers.is_registered(_redraw):
-        bpy.app.timers.unregister(_redraw)
-    bpy.types.TOPBAR_MT_file_export.remove(_export_menu)
-    del bpy.types.Scene.bfb_units
-    for cls in reversed(_classes):
-        bpy.utils.unregister_class(cls)
+    module_loader.cleanup(globals(), bpy)

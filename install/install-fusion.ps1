@@ -27,5 +27,5 @@ Write-Host 'ONE-TIME SETUP IN FUSION:'
 Write-Host 'Utilities > Add-Ins > Scripts and Add-Ins > Add-Ins > +'
 Write-Host 'Select this folder (or BlenderFusionBridge.py if the dialog asks for a file).'
 Write-Host 'Run BlenderFusionBridge and enable Run on Startup.'
-Write-Host 'Then install blender_fusion_bridge-0.2.0.zip in Blender Preferences > Add-ons.'
+Write-Host 'Then install blender_fusion_bridge-0.2.1.zip in Blender Preferences > Add-ons.'
 Start-Process explorer.exe -ArgumentList ('"' + $target + '"')

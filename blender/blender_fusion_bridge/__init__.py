@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Blender → Fusion Bridge", "author": "BartGaczorek",
-    "version": (0, 2, 1), "blender": (3, 6, 0),
+    "version": (0, 2, 2), "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Fusion", "category": "Import-Export",
     "description": "Wyślij zaznaczone modele do Autodesk Fusion na Windows",
 }

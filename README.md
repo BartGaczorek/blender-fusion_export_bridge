@@ -1,16 +1,25 @@
 # Blender ↔ Fusion Bridge
 
-**0.2.1 — Windows.** Wersja 0.1.0 Blender → nowy dokument Fusion została sprawdzona
-przez użytkownika. Nowe funkcje 0.2.1 mają testy automatyczne; wymagają jeszcze próby
+**0.2.2 — Windows.** Wersja 0.1.0 Blender → nowy dokument Fusion została sprawdzona
+przez użytkownika. Nowe funkcje 0.2.2 mają testy automatyczne; wymagają jeszcze próby
 w rzeczywistych aplikacjach na Windows.
 
-## Poprawka instalacji 0.2.1
+## Poprawka Fusion 0.2.2
+
+Naprawia „3 : invalid id”: identyfikator komendy zawiera teraz wyłącznie dozwolone
+litery, cyfry i podkreślenia. Rejestracja sprząta pozostałości przycisku po błędzie,
+a komunikaty startowe zawierają etap i traceback. Przycisk jest domyślnie przypięty
+w Design → Utilities → Add-Ins. Zamknij Fusion, zastąp cały folder odbiornika i uruchom
+Fusion ponownie, aby usunąć z pamięci starszą kopię commands.py.
+Blender 0.2.1 jest zgodny i nie wymaga ponownej instalacji do tej poprawki.
+
+## Poprawka instalacji Blendera (od 0.2.1)
 
 Naprawia aktualizację dodatku w uruchomionym Blenderze: stare podmoduły Python
 (w tym bridge_protocol z wersji 0.1.0) są przeładowywane w kolejności zależności.
 Nieudana rejestracja usuwa timery, blokadę odbiornika, menu i zarejestrowane klasy.
 Jeśli poprzednia instalacja już zakończyła się błędem, przed instalacją tej wersji
-zapisz projekty i zamknij wszystkie procesy Blendera. Zainstaluj wewnętrzny ZIP 0.2.1.
+zapisz projekty i zamknij wszystkie procesy Blendera. Zainstaluj wewnętrzny ZIP 0.2.2.
 Protokół nadal ma numer 2; odbiornik Fusion 0.2.0 jest zgodny. Aktualizacja całego
 folderu Fusion jest zalecana, aby także uruchamianie zamkniętego Blendera używało poprawki.
 
@@ -30,7 +39,7 @@ folderu Fusion jest zalecana, aby także uruchamianie zamkniętego Blendera uży
 ## Aktualizacja z 0.1.0 — instalacja ręczna
 
 1. W Fusion zatrzymaj **BlenderFusionBridge** w **Scripts and Add-Ins**.
-2. Zamknij Blender. Rozpakuj cały zestaw **Blender-Fusion-Bridge-0.2.1-Windows.zip**.
+2. Zamknij Blender. Rozpakuj cały zestaw **Blender-Fusion-Bridge-0.2.2-Windows.zip**.
 3. Skopiuj **cały folder `BlenderFusionBridge`** z nowej paczki do swojego miejsca
    instalacji, np. `C:\TOOLS\BlenderFusionBridge`, zastępując poprzednią wersję.
    Zachowaj podfolder `blender_fusion_bridge`: służy do startu zamkniętego Blendera.
@@ -38,9 +47,9 @@ folderu Fusion jest zalecana, aby także uruchamianie zamkniętego Blendera uży
    **Utilities → Add-Ins → Scripts and Add-Ins → Add-Ins → +**; wskaż folder albo
    `BlenderFusionBridge.py`, zależnie od okna. Włącz **Run on Startup**.
 5. W Blenderze wyłącz stary dodatek i zainstaluj wewnętrzny ZIP
-   **blender_fusion_bridge-0.2.1.zip** przez **Preferences → Add-ons → Install from Disk**.
+   **blender_fusion_bridge-0.2.2.zip** przez **Preferences → Add-ons → Install from Disk**.
    Włącz dodatek. Przy problemie z odświeżeniem modułów uruchom Blender ponownie.
-6. Zainstaluj **obie** strony 0.2.1. Wersja 0.1.0 nie odbiera protokołu 0.2.1.
+6. Zainstaluj **obie** strony 0.2.2. Wersja 0.1.0 nie odbiera protokołu 0.2.2.
 
 Nowa instalacja: te same kroki, pomijając zatrzymywanie starej wersji. Użytkownicy
 bez blokad PowerShell mogą opcjonalnie użyć Install-Fusion.cmd zamiast kopiowania.
@@ -53,7 +62,7 @@ W Object Mode zaznacz modele, otwórz **N → Fusion**, ustaw **Cel**:
 
 - **Nowy dokument:** każdy transfer tworzy osobny, niezapisany dokument Fusion.
 - **Aktywny dokument Fusion:** dodaje siatki do root component aktualnego dokumentu.
-  Dokument Fusion musi być otwarty, a odbiornik 0.2.1 uruchomiony. Po przełączeniu
+  Dokument Fusion musi być otwarty, a odbiornik 0.2.2 uruchomiony. Po przełączeniu
   dokumentu poczekaj ok. 2 sekundy na odświeżenie statusu i dopiero wysyłaj.
 
 Kliknij **Wyślij do Fusion**. Przy aktywnym poleceniu Fusion poczeka na jego zakończenie.
@@ -83,9 +92,9 @@ Jeżeli Fusion nie zna tej ścieżki, jednorazowo poprosi o wskazanie **blender.
 Zamknięty Blender jest uruchamiany z odbiornikiem z paczki, również bez wcześniejszego
 zapisania dodatku w preferencjach. Nie zmienia to startup file ani preferencji.
 Jeśli Blender już działa, ale dodatek jest wyłączony, transfer pozostaje w kolejce:
-włącz dodatek 0.2.1 w tym oknie. Most nie otwiera wtedy drugiego procesu.
+włącz dodatek 0.2.2 w tym oknie. Most nie otwiera wtedy drugiego procesu.
 
-Przy wielu procesach Blendera odbiera **pierwszy uruchomiony odbiornik 0.2.1**.
+Przy wielu procesach Blendera odbiera **pierwszy uruchomiony odbiornik 0.2.2**.
 Wyłącz dodatek w nim i włącz go w docelowym procesie, jeśli chcesz zmienić odbiorcę.
 Wielookienkowy Blender korzysta ze sceny bieżącego kontekstu aplikacji.
 

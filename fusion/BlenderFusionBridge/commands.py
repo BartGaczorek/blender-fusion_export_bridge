@@ -4,7 +4,7 @@ from . import bridge_protocol as protocol
 from .exporter import selected_bodies, export_bodies
 from .launcher import ensure_blender
 
-COMMAND_ID = 'BartGaczorek.BlenderFusionBridge.SendToBlender.v2'
+COMMAND_ID = 'BartGaczorek_BlenderFusionBridge_SendToBlender_v2'
 
 
 class Execute(adsk.core.CommandEventHandler):
@@ -67,17 +67,32 @@ class Destroyed(adsk.core.CommandEventHandler):
 
 def install(runtime):
     ui = runtime.app.userInterface
-    definition = ui.commandDefinitions.addButtonDefinition(
-        COMMAND_ID, 'Wyślij do Blendera', 'Wyślij zaznaczone ciała Mesh, BRep lub powierzchniowe do Blendera')
-    handler = Created(runtime)
-    definition.commandCreated.add(handler)
     panel = ui.allToolbarPanels.itemById('SolidScriptsAddinsPanel')
     if not panel:
-        definition.deleteMe()
         raise RuntimeError('Nie znaleziono panelu dodatków w Fusion Design.')
-    control = panel.controls.addCommand(definition)
-    control.isPromoted = True
-    return definition, handler, control
+    # Remove only our own leftover UI after a partially failed earlier start.
+    old_control = panel.controls.itemById(COMMAND_ID)
+    if old_control:
+        old_control.deleteMe()
+    old_definition = ui.commandDefinitions.itemById(COMMAND_ID)
+    if old_definition:
+        old_definition.deleteMe()
+    definition = None
+    control = None
+    try:
+        definition = ui.commandDefinitions.addButtonDefinition(
+            COMMAND_ID, 'Wyślij do Blendera', 'Wyślij zaznaczone ciała Mesh, BRep lub powierzchniowe do Blendera')
+        handler = Created(runtime)
+        definition.commandCreated.add(handler)
+        control = panel.controls.addCommand(definition)
+        control.isPromotedByDefault = True
+        control.isPromoted = True
+        return definition, handler, control
+    except Exception as exc:
+        for item in (control, definition):
+            if item and item.isValid:
+                item.deleteMe()
+        raise RuntimeError('Rejestracja przycisku Wyślij do Blendera: ' + str(exc)) from exc
 
 
 def uninstall(handles):

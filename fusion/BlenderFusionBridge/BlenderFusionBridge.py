@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 import threading
 import time
 import uuid
+import traceback
 import adsk.fusion
 
 import adsk.core
@@ -60,6 +61,7 @@ class Runtime:
         self.document_name = ""
         self.outgoing = []
         self.commands = None
+        self.start_stage = "inicjalizacja"
 
     def refresh_document(self):
         document = self.app.activeDocument if adsk.fusion.Design.cast(self.app.activeProduct) else None
@@ -79,17 +81,22 @@ class Runtime:
                     self.app.userInterface.messageBox('Blender: ' + status['message'])
 
     def start(self):
+        self.start_stage = "blokada odbiornika"
         self.lock.acquire()
         self.log_handler = RotatingFileHandler(self.root / "receiver.log", maxBytes=1_000_000,
                                               backupCount=2, encoding="utf-8")
         self.log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
         self.logger.addHandler(self.log_handler)
         self.logger.setLevel(logging.INFO)
+        self.start_stage = "odtwarzanie kolejki"
         protocol.recover_interrupted(self.root)
+        self.start_stage = "rejestracja zdarzenia Fusion"
         self.event = self.app.registerCustomEvent(EVENT_ID)
         self.handler = ReceiveHandler(self)
         self.event.add(self.handler)
+        self.start_stage = "odczyt dokumentu"
         self.refresh_document()
+        self.start_stage = "rejestracja przycisku"
         from . import commands
         self.commands = commands.install(self)
         self.thread = threading.Thread(target=self.watch, name="BlenderFusionBridge", daemon=True)
@@ -147,9 +154,16 @@ def run(context):
         candidate.start()
         _runtime = candidate
     except Exception as exc:
+        details = traceback.format_exc()
+        stage = candidate.start_stage if candidate else 'inicjalizacja'
         if candidate:
-            candidate.stop()
-        app.userInterface.messageBox("Blender Fusion Bridge: " + str(exc))
+            candidate.logger.error('Startup failed at %s\n%s', stage, details)
+            try:
+                candidate.stop()
+            except Exception:
+                details += '\nCleanup: ' + traceback.format_exc()
+        app.userInterface.messageBox(
+            "Blender Fusion Bridge — " + stage + ": " + str(exc) + "\n\n" + details)
 
 
 def stop(context):
